@@ -113,9 +113,9 @@ const VendorDashboard = () => {
 
       <div className="container py-8 md:py-10">
         {tab === "overview" && (
-          <Overview stats={stats} bookings={bookings} onAction={updateBooking} goBookings={() => setTab("bookings")} />
+          <Overview stats={stats} bookings={bookings} availability={availability} onAction={updateBooking} goBookings={() => setTab("bookings")} />
         )}
-        {tab === "bookings" && <BookingsTab bookings={bookings} onAction={updateBooking} />}
+        {tab === "bookings" && <BookingsTab bookings={bookings} availability={availability} onAction={updateBooking} />}
         {tab === "services" && <ServicesTab services={services} setServices={setServices} />}
         {tab === "availability" && (
           <AvailabilityTab availability={availability} setAvailability={setAvailability} />
@@ -137,11 +137,18 @@ const StatCard = ({ icon: Icon, label, value, accent = false }: { icon: typeof W
   </div>
 );
 
+const conflictLabel = (a: Availability, b: Booking): string | undefined => {
+  const c = checkSlot(a, b.date, b.time);
+  if (c.ok) return undefined;
+  return c.reason === "closed" ? "closed day" : `outside ${c.from}–${c.to}`;
+};
+
 const Overview = ({
-  stats, bookings, onAction, goBookings,
+  stats, bookings, availability, onAction, goBookings,
 }: {
   stats: { accepted: number; pending: number; completed: number; earnings: number };
   bookings: Booking[];
+  availability: Availability;
   onAction: (id: string, status: BookingStatus) => void;
   goBookings: () => void;
 }) => {
@@ -165,7 +172,7 @@ const Overview = ({
         ) : (
           <ul className="divide-y divide-border">
             {pending.map((b) => (
-              <BookingRow key={b.id} b={b} onAction={onAction} />
+              <BookingRow key={b.id} b={b} onAction={onAction} conflict={conflictLabel(availability, b)} />
             ))}
           </ul>
         )}
@@ -215,7 +222,7 @@ const BookingRow = ({ b, onAction, conflict }: { b: Booking; onAction: (id: stri
   </li>
 );
 
-const BookingsTab = ({ bookings, onAction }: { bookings: Booking[]; onAction: (id: string, status: BookingStatus) => void }) => {
+const BookingsTab = ({ bookings, availability, onAction }: { bookings: Booking[]; availability: Availability; onAction: (id: string, status: BookingStatus) => void }) => {
   const [filter, setFilter] = useState<BookingStatus | "all">("all");
   const filters: (BookingStatus | "all")[] = ["all", "pending", "accepted", "completed", "rejected"];
   const filtered = filter === "all" ? bookings : bookings.filter((b) => b.status === filter);
@@ -239,7 +246,7 @@ const BookingsTab = ({ bookings, onAction }: { bookings: Booking[]; onAction: (i
           <p className="text-muted-foreground py-12 text-center text-sm">No bookings in this view.</p>
         ) : (
           <ul className="divide-y divide-border px-3">
-            {filtered.map((b) => <BookingRow key={b.id} b={b} onAction={onAction} />)}
+            {filtered.map((b) => <BookingRow key={b.id} b={b} onAction={onAction} conflict={conflictLabel(availability, b)} />)}
           </ul>
         )}
       </div>
