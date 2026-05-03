@@ -327,9 +327,9 @@ const ServicesTab = ({ services, setServices }: { services: VendorService[]; set
   );
 };
 
-const AvailabilityTab = ({ availability, setAvailability }: { availability: Availability; setAvailability: React.Dispatch<React.SetStateAction<Availability>> }) => {
+const AvailabilityTab = ({ availability, setAvailability }: { availability: Availability; setAvailability: (a: Availability) => void }) => {
   const update = (d: Weekday, patch: Partial<Availability[Weekday]>) =>
-    setAvailability((p) => ({ ...p, [d]: { ...p[d], ...patch } }));
+    setAvailability({ ...availability, [d]: { ...availability[d], ...patch } });
 
   return (
     <div className="bg-card rounded-2xl border border-border shadow-card">
