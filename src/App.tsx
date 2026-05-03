@@ -10,6 +10,7 @@ import VendorDetail from "./pages/VendorDetail.tsx";
 import Login from "./pages/Login.tsx";
 import VendorSignup from "./pages/VendorSignup.tsx";
 import About from "./pages/About.tsx";
+import VendorDashboard from "./pages/VendorDashboard.tsx";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/vendor-signup" element={<VendorSignup />} />
           <Route path="/about" element={<About />} />
+          <Route path="/vendor-dashboard" element={<VendorDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
