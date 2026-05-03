@@ -1,8 +1,8 @@
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import {
-  initialBookings,
   initialServices,
+  initialAvailability,
   weekdays,
   type Booking,
   type BookingStatus,
@@ -10,7 +10,8 @@ import {
   type Availability,
   type Weekday,
 } from "@/data/vendorDashboard";
-import { checkSlot, useAvailability } from "@/lib/availability";
+import { checkSlot, fetchAvailability, persistAvailability } from "@/lib/availability";
+import { supabase } from "@/integrations/supabase/client";
 import {
   CalendarDays,
   Check,
@@ -25,7 +26,7 @@ import {
   X,
   Phone,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type Tab = "overview" | "bookings" | "services" | "availability";
@@ -37,11 +38,54 @@ const statusStyles: Record<BookingStatus, string> = {
   completed: "bg-secondary text-muted-foreground border-border",
 };
 
+const VENDOR_ID = "luxe-crown-salon";
+
 const VendorDashboard = () => {
   const [tab, setTab] = useState<Tab>("overview");
-  const [bookings, setBookings] = useState<Booking[]>(initialBookings);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [services, setServices] = useState<VendorService[]>(initialServices);
-  const [availability, setAvailability] = useAvailability();
+  const [availability, setAvailabilityState] = useState<Availability>(initialAvailability);
+
+  const loadBookings = async () => {
+    const { data, error } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("vendor_id", VENDOR_ID)
+      .order("booking_date", { ascending: false })
+      .order("booking_time", { ascending: false });
+    if (error) return toast.error("Failed to load bookings", { description: error.message });
+    setBookings(
+      (data ?? []).map((r) => ({
+        id: r.id,
+        customer: r.customer_name,
+        phone: r.customer_phone,
+        service: r.service_name,
+        date: r.booking_date,
+        time: (r.booking_time as string).slice(0, 5),
+        price: r.price,
+        status: r.status as BookingStatus,
+      })),
+    );
+  };
+
+  useEffect(() => {
+    fetchAvailability(VENDOR_ID).then(setAvailabilityState).catch(() => {});
+    loadBookings();
+    const ch = supabase
+      .channel("bookings-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings", filter: `vendor_id=eq.${VENDOR_ID}` }, () => loadBookings())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, []);
+
+  const setAvailability = async (a: Availability) => {
+    setAvailabilityState(a);
+    try {
+      await persistAvailability(VENDOR_ID, a);
+    } catch (e: any) {
+      toast.error("Could not save availability", { description: e.message });
+    }
+  };
 
   const stats = useMemo(() => {
     const accepted = bookings.filter((b) => b.status === "accepted");
@@ -51,7 +95,7 @@ const VendorDashboard = () => {
     return { accepted: accepted.length, pending: pending.length, completed: completed.length, earnings };
   }, [bookings]);
 
-  const updateBooking = (id: string, status: BookingStatus) => {
+  const updateBooking = async (id: string, status: BookingStatus) => {
     if (status === "accepted") {
       const b = bookings.find((x) => x.id === id);
       if (b) {
@@ -69,6 +113,10 @@ const VendorDashboard = () => {
           return;
         }
       }
+    }
+    const { error } = await supabase.from("bookings").update({ status }).eq("id", id);
+    if (error) {
+      return toast.error("Server rejected the change", { description: error.message });
     }
     setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
     toast.success(
