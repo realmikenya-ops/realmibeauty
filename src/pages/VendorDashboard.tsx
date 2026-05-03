@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import {
   initialBookings,
   initialServices,
-  initialAvailability,
   weekdays,
   type Booking,
   type BookingStatus,
@@ -11,6 +10,7 @@ import {
   type Availability,
   type Weekday,
 } from "@/data/vendorDashboard";
+import { checkSlot, useAvailability } from "@/lib/availability";
 import {
   CalendarDays,
   Check,
@@ -40,7 +40,7 @@ const VendorDashboard = () => {
   const [tab, setTab] = useState<Tab>("overview");
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [services, setServices] = useState<VendorService[]>(initialServices);
-  const [availability, setAvailability] = useState<Availability>(initialAvailability);
+  const [availability, setAvailability] = useAvailability();
 
   const stats = useMemo(() => {
     const accepted = bookings.filter((b) => b.status === "accepted");
@@ -51,6 +51,24 @@ const VendorDashboard = () => {
   }, [bookings]);
 
   const updateBooking = (id: string, status: BookingStatus) => {
+    if (status === "accepted") {
+      const b = bookings.find((x) => x.id === id);
+      if (b) {
+        const check = checkSlot(availability, b.date, b.time);
+        if (check.ok === false) {
+          if (check.reason === "closed") {
+            toast.error("Cannot accept — closed on this day", {
+              description: `${b.date} falls on a day you've marked closed. Update availability or reject the booking.`,
+            });
+          } else {
+            toast.error("Cannot accept — outside working hours", {
+              description: `Booking is at ${b.time}. Working hours are ${check.from}–${check.to}.`,
+            });
+          }
+          return;
+        }
+      }
+    }
     setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
     toast.success(
       status === "accepted" ? "Booking accepted" : status === "rejected" ? "Booking rejected" : "Booking marked completed",
