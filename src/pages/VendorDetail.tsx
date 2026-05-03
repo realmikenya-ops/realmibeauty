@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Clock, MapPin, MessageCircle, Phone, Star } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { checkSlot, filterSlotsForDate, useAvailability, weekdayFromDate } from "@/lib/availability";
 
 const slots = ["09:00", "10:30", "12:00", "13:30", "15:00", "16:30", "18:00"];
 
@@ -15,6 +16,9 @@ const VendorDetail = () => {
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [slot, setSlot] = useState<string | null>(null);
+  const [availability] = useAvailability();
+  const day = availability[weekdayFromDate(date)];
+  const availableSlots = filterSlotsForDate(availability, date, slots);
 
   if (!vendor) {
     return (
@@ -32,6 +36,14 @@ const VendorDetail = () => {
 
   const handleBook = () => {
     if (!slot) return toast.error("Please pick a time slot");
+    const check = checkSlot(availability, date, slot);
+    if (check.ok === false) {
+      if (check.reason === "closed")
+        return toast.error("Vendor is closed on this day", { description: "Please choose another date." });
+      return toast.error("Outside working hours", {
+        description: `This vendor only takes bookings between ${check.from} and ${check.to}.`,
+      });
+    }
     toast.success(`Booking confirmed at ${vendor.name}`, {
       description: `${service.name} · ${date} · ${slot}. M-Pesa STK push sent to your phone.`,
     });
@@ -132,21 +144,41 @@ const VendorDetail = () => {
               />
 
               <label className="mt-4 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Time</label>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                {slots.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setSlot(s)}
-                    className={`rounded-lg border py-2 text-sm font-medium transition-colors ${
-                      slot === s
-                        ? "border-accent bg-accent text-accent-foreground"
-                        : "border-border hover:border-accent"
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
+              {!day.open ? (
+                <p className="bg-secondary text-muted-foreground mt-2 rounded-lg p-3 text-center text-sm">
+                  Closed on this day. Pick another date.
+                </p>
+              ) : (
+                <>
+                  <p className="text-muted-foreground mt-2 text-xs">Open {day.from} – {day.to}</p>
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {slots.map((s) => {
+                      const enabled = availableSlots.includes(s);
+                      const selected = slot === s;
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          disabled={!enabled}
+                          onClick={() => setSlot(s)}
+                          className={`rounded-lg border py-2 text-sm font-medium transition-colors ${
+                            !enabled
+                              ? "border-border bg-muted/40 text-muted-foreground line-through opacity-50 cursor-not-allowed"
+                              : selected
+                                ? "border-accent bg-accent text-accent-foreground"
+                                : "border-border hover:border-accent"
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {availableSlots.length === 0 && (
+                    <p className="text-destructive mt-2 text-xs">No slots available within working hours.</p>
+                  )}
+                </>
+              )}
 
               <Button onClick={handleBook} variant="luxe" size="lg" className="mt-6 w-full">
                 Confirm & Pay with M-Pesa

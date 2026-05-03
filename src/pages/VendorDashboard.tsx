@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import {
   initialBookings,
   initialServices,
-  initialAvailability,
   weekdays,
   type Booking,
   type BookingStatus,
@@ -11,10 +10,12 @@ import {
   type Availability,
   type Weekday,
 } from "@/data/vendorDashboard";
+import { checkSlot, useAvailability } from "@/lib/availability";
 import {
   CalendarDays,
   Check,
   Clock,
+  AlertTriangle,
   Pencil,
   Plus,
   Scissors,
@@ -40,7 +41,7 @@ const VendorDashboard = () => {
   const [tab, setTab] = useState<Tab>("overview");
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [services, setServices] = useState<VendorService[]>(initialServices);
-  const [availability, setAvailability] = useState<Availability>(initialAvailability);
+  const [availability, setAvailability] = useAvailability();
 
   const stats = useMemo(() => {
     const accepted = bookings.filter((b) => b.status === "accepted");
@@ -51,6 +52,24 @@ const VendorDashboard = () => {
   }, [bookings]);
 
   const updateBooking = (id: string, status: BookingStatus) => {
+    if (status === "accepted") {
+      const b = bookings.find((x) => x.id === id);
+      if (b) {
+        const check = checkSlot(availability, b.date, b.time);
+        if (check.ok === false) {
+          if (check.reason === "closed") {
+            toast.error("Cannot accept — closed on this day", {
+              description: `${b.date} falls on a day you've marked closed. Update availability or reject the booking.`,
+            });
+          } else {
+            toast.error("Cannot accept — outside working hours", {
+              description: `Booking is at ${b.time}. Working hours are ${check.from}–${check.to}.`,
+            });
+          }
+          return;
+        }
+      }
+    }
     setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
     toast.success(
       status === "accepted" ? "Booking accepted" : status === "rejected" ? "Booking rejected" : "Booking marked completed",
@@ -94,9 +113,9 @@ const VendorDashboard = () => {
 
       <div className="container py-8 md:py-10">
         {tab === "overview" && (
-          <Overview stats={stats} bookings={bookings} onAction={updateBooking} goBookings={() => setTab("bookings")} />
+          <Overview stats={stats} bookings={bookings} availability={availability} onAction={updateBooking} goBookings={() => setTab("bookings")} />
         )}
-        {tab === "bookings" && <BookingsTab bookings={bookings} onAction={updateBooking} />}
+        {tab === "bookings" && <BookingsTab bookings={bookings} availability={availability} onAction={updateBooking} />}
         {tab === "services" && <ServicesTab services={services} setServices={setServices} />}
         {tab === "availability" && (
           <AvailabilityTab availability={availability} setAvailability={setAvailability} />
@@ -118,11 +137,18 @@ const StatCard = ({ icon: Icon, label, value, accent = false }: { icon: typeof W
   </div>
 );
 
+const conflictLabel = (a: Availability, b: Booking): string | undefined => {
+  const c = checkSlot(a, b.date, b.time);
+  if (c.ok === true) return undefined;
+  return c.reason === "closed" ? "closed day" : `outside ${c.from}–${c.to}`;
+};
+
 const Overview = ({
-  stats, bookings, onAction, goBookings,
+  stats, bookings, availability, onAction, goBookings,
 }: {
   stats: { accepted: number; pending: number; completed: number; earnings: number };
   bookings: Booking[];
+  availability: Availability;
   onAction: (id: string, status: BookingStatus) => void;
   goBookings: () => void;
 }) => {
@@ -146,7 +172,7 @@ const Overview = ({
         ) : (
           <ul className="divide-y divide-border">
             {pending.map((b) => (
-              <BookingRow key={b.id} b={b} onAction={onAction} />
+              <BookingRow key={b.id} b={b} onAction={onAction} conflict={conflictLabel(availability, b)} />
             ))}
           </ul>
         )}
@@ -155,7 +181,7 @@ const Overview = ({
   );
 };
 
-const BookingRow = ({ b, onAction }: { b: Booking; onAction: (id: string, status: BookingStatus) => void }) => (
+const BookingRow = ({ b, onAction, conflict }: { b: Booking; onAction: (id: string, status: BookingStatus) => void; conflict?: string }) => (
   <li className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
     <div className="min-w-0 flex-1">
       <div className="flex flex-wrap items-center gap-2">
@@ -163,6 +189,11 @@ const BookingRow = ({ b, onAction }: { b: Booking; onAction: (id: string, status
         <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${statusStyles[b.status]}`}>
           {b.status}
         </span>
+        {conflict && b.status === "pending" && (
+          <span className="bg-destructive/10 text-destructive border-destructive/30 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+            <AlertTriangle className="h-3 w-3" /> {conflict}
+          </span>
+        )}
       </div>
       <p className="text-muted-foreground mt-1 text-sm">{b.service} · KSh {b.price.toLocaleString()}</p>
       <p className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
@@ -191,7 +222,7 @@ const BookingRow = ({ b, onAction }: { b: Booking; onAction: (id: string, status
   </li>
 );
 
-const BookingsTab = ({ bookings, onAction }: { bookings: Booking[]; onAction: (id: string, status: BookingStatus) => void }) => {
+const BookingsTab = ({ bookings, availability, onAction }: { bookings: Booking[]; availability: Availability; onAction: (id: string, status: BookingStatus) => void }) => {
   const [filter, setFilter] = useState<BookingStatus | "all">("all");
   const filters: (BookingStatus | "all")[] = ["all", "pending", "accepted", "completed", "rejected"];
   const filtered = filter === "all" ? bookings : bookings.filter((b) => b.status === filter);
@@ -215,7 +246,7 @@ const BookingsTab = ({ bookings, onAction }: { bookings: Booking[]; onAction: (i
           <p className="text-muted-foreground py-12 text-center text-sm">No bookings in this view.</p>
         ) : (
           <ul className="divide-y divide-border px-3">
-            {filtered.map((b) => <BookingRow key={b.id} b={b} onAction={onAction} />)}
+            {filtered.map((b) => <BookingRow key={b.id} b={b} onAction={onAction} conflict={conflictLabel(availability, b)} />)}
           </ul>
         )}
       </div>
@@ -309,9 +340,9 @@ const ServicesTab = ({ services, setServices }: { services: VendorService[]; set
   );
 };
 
-const AvailabilityTab = ({ availability, setAvailability }: { availability: Availability; setAvailability: React.Dispatch<React.SetStateAction<Availability>> }) => {
+const AvailabilityTab = ({ availability, setAvailability }: { availability: Availability; setAvailability: (a: Availability) => void }) => {
   const update = (d: Weekday, patch: Partial<Availability[Weekday]>) =>
-    setAvailability((p) => ({ ...p, [d]: { ...p[d], ...patch } }));
+    setAvailability({ ...availability, [d]: { ...availability[d], ...patch } });
 
   return (
     <div className="bg-card rounded-2xl border border-border shadow-card">
