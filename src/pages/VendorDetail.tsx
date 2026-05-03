@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Clock, MapPin, MessageCircle, Phone, Star } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { checkSlot, filterSlotsForDate, useAvailability, weekdayFromDate } from "@/lib/availability";
 
 const slots = ["09:00", "10:30", "12:00", "13:30", "15:00", "16:30", "18:00"];
 
@@ -15,6 +16,9 @@ const VendorDetail = () => {
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [slot, setSlot] = useState<string | null>(null);
+  const [availability] = useAvailability();
+  const day = availability[weekdayFromDate(date)];
+  const availableSlots = filterSlotsForDate(availability, date, slots);
 
   if (!vendor) {
     return (
@@ -32,6 +36,14 @@ const VendorDetail = () => {
 
   const handleBook = () => {
     if (!slot) return toast.error("Please pick a time slot");
+    const check = checkSlot(availability, date, slot);
+    if (!check.ok) {
+      if (check.reason === "closed")
+        return toast.error("Vendor is closed on this day", { description: "Please choose another date." });
+      return toast.error("Outside working hours", {
+        description: `This vendor only takes bookings between ${check.from} and ${check.to}.`,
+      });
+    }
     toast.success(`Booking confirmed at ${vendor.name}`, {
       description: `${service.name} · ${date} · ${slot}. M-Pesa STK push sent to your phone.`,
     });
