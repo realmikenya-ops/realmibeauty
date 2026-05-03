@@ -14,7 +14,81 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bookings: {
+        Row: {
+          booking_date: string
+          booking_time: string
+          created_at: string
+          customer_name: string
+          customer_phone: string
+          id: string
+          price: number
+          service_name: string
+          status: Database["public"]["Enums"]["booking_status"]
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          booking_date: string
+          booking_time: string
+          created_at?: string
+          customer_name: string
+          customer_phone: string
+          id?: string
+          price: number
+          service_name: string
+          status?: Database["public"]["Enums"]["booking_status"]
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          booking_date?: string
+          booking_time?: string
+          created_at?: string
+          customer_name?: string
+          customer_phone?: string
+          id?: string
+          price?: number
+          service_name?: string
+          status?: Database["public"]["Enums"]["booking_status"]
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: []
+      }
+      vendor_availability: {
+        Row: {
+          created_at: string
+          id: string
+          is_open: boolean
+          open_from: string
+          open_to: string
+          updated_at: string
+          vendor_id: string
+          weekday: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          open_from?: string
+          open_to?: string
+          updated_at?: string
+          vendor_id: string
+          weekday: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          open_from?: string
+          open_to?: string
+          updated_at?: string
+          vendor_id?: string
+          weekday?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +97,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      booking_status: "pending" | "accepted" | "rejected" | "completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +224,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      booking_status: ["pending", "accepted", "rejected", "completed"],
+    },
   },
 } as const
