@@ -37,7 +37,7 @@ const VendorDetail = () => {
   const handleBook = () => {
     if (!slot) return toast.error("Please pick a time slot");
     const check = checkSlot(availability, date, slot);
-    if (!check.ok) {
+    if (check.ok === false) {
       if (check.reason === "closed")
         return toast.error("Vendor is closed on this day", { description: "Please choose another date." });
       return toast.error("Outside working hours", {
