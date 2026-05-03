@@ -15,6 +15,7 @@ import {
   CalendarDays,
   Check,
   Clock,
+  AlertTriangle,
   Pencil,
   Plus,
   Scissors,
@@ -173,7 +174,7 @@ const Overview = ({
   );
 };
 
-const BookingRow = ({ b, onAction }: { b: Booking; onAction: (id: string, status: BookingStatus) => void }) => (
+const BookingRow = ({ b, onAction, conflict }: { b: Booking; onAction: (id: string, status: BookingStatus) => void; conflict?: string }) => (
   <li className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
     <div className="min-w-0 flex-1">
       <div className="flex flex-wrap items-center gap-2">
@@ -181,6 +182,11 @@ const BookingRow = ({ b, onAction }: { b: Booking; onAction: (id: string, status
         <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${statusStyles[b.status]}`}>
           {b.status}
         </span>
+        {conflict && b.status === "pending" && (
+          <span className="bg-destructive/10 text-destructive border-destructive/30 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+            <AlertTriangle className="h-3 w-3" /> {conflict}
+          </span>
+        )}
       </div>
       <p className="text-muted-foreground mt-1 text-sm">{b.service} · KSh {b.price.toLocaleString()}</p>
       <p className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
