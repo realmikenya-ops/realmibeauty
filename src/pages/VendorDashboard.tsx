@@ -139,7 +139,7 @@ const StatCard = ({ icon: Icon, label, value, accent = false }: { icon: typeof W
 
 const conflictLabel = (a: Availability, b: Booking): string | undefined => {
   const c = checkSlot(a, b.date, b.time);
-  if (c.ok) return undefined;
+  if (c.ok === true) return undefined;
   return c.reason === "closed" ? "closed day" : `outside ${c.from}–${c.to}`;
 };
 
