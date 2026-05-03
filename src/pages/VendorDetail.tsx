@@ -205,8 +205,8 @@ const VendorDetail = () => {
                 </>
               )}
 
-              <Button onClick={handleBook} variant="luxe" size="lg" className="mt-6 w-full">
-                Confirm & Pay with M-Pesa
+              <Button onClick={handleBook} disabled={submitting} variant="luxe" size="lg" className="mt-6 w-full">
+                {submitting ? "Submitting…" : "Confirm & Pay with M-Pesa"}
               </Button>
               <p className="text-muted-foreground mt-3 text-center text-xs">
                 You'll receive an STK push on your phone to complete payment securely.
