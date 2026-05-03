@@ -4,9 +4,11 @@ import { useParams, Link } from "react-router-dom";
 import { vendors } from "@/data/vendors";
 import { Button } from "@/components/ui/button";
 import { Clock, MapPin, MessageCircle, Phone, Star } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { checkSlot, filterSlotsForDate, useAvailability, weekdayFromDate } from "@/lib/availability";
+import { checkSlot, fetchAvailability, filterSlotsForDate, weekdayFromDate } from "@/lib/availability";
+import { initialAvailability, type Availability } from "@/data/vendorDashboard";
+import { supabase } from "@/integrations/supabase/client";
 
 const slots = ["09:00", "10:30", "12:00", "13:30", "15:00", "16:30", "18:00"];
 
@@ -16,9 +18,15 @@ const VendorDetail = () => {
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [slot, setSlot] = useState<string | null>(null);
-  const [availability] = useAvailability();
+  const [availability, setAvailability] = useState<Availability>(initialAvailability);
+  const [submitting, setSubmitting] = useState(false);
   const day = availability[weekdayFromDate(date)];
   const availableSlots = filterSlotsForDate(availability, date, slots);
+
+  useEffect(() => {
+    if (!id) return;
+    fetchAvailability(id).then(setAvailability).catch(() => {});
+  }, [id]);
 
   if (!vendor) {
     return (
@@ -34,7 +42,7 @@ const VendorDetail = () => {
 
   const service = vendor.services.find((s) => s.name === selectedService) ?? vendor.services[0];
 
-  const handleBook = () => {
+  const handleBook = async () => {
     if (!slot) return toast.error("Please pick a time slot");
     const check = checkSlot(availability, date, slot);
     if (check.ok === false) {
@@ -44,8 +52,25 @@ const VendorDetail = () => {
         description: `This vendor only takes bookings between ${check.from} and ${check.to}.`,
       });
     }
-    toast.success(`Booking confirmed at ${vendor.name}`, {
-      description: `${service.name} · ${date} · ${slot}. M-Pesa STK push sent to your phone.`,
+    setSubmitting(true);
+    const { error } = await supabase.from("bookings").insert({
+      vendor_id: vendor.id,
+      customer_name: "Guest customer",
+      customer_phone: "0700000000",
+      service_name: service.name,
+      price: service.price,
+      booking_date: date,
+      booking_time: slot,
+      status: "pending",
+    });
+    setSubmitting(false);
+    if (error) {
+      // Server-side trigger rejected the booking
+      const msg = error.message || "Could not create booking";
+      return toast.error("Booking rejected", { description: msg });
+    }
+    toast.success(`Booking sent to ${vendor.name}`, {
+      description: `${service.name} · ${date} · ${slot}. You'll receive an M-Pesa STK push once the vendor accepts.`,
     });
   };
 
