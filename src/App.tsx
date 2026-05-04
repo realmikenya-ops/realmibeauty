@@ -11,6 +11,11 @@ import Login from "./pages/Login.tsx";
 import VendorSignup from "./pages/VendorSignup.tsx";
 import About from "./pages/About.tsx";
 import VendorDashboard from "./pages/VendorDashboard.tsx";
+import CyberHome from "./pages/CyberHome.tsx";
+import CyberAuth from "./pages/CyberAuth.tsx";
+import CyberDashboard from "./pages/CyberDashboard.tsx";
+import CyberAdmin from "./pages/CyberAdmin.tsx";
+import { WhatsAppButton } from "./components/WhatsAppButton.tsx";
 
 const queryClient = new QueryClient();
 
@@ -28,9 +33,14 @@ const App = () => (
           <Route path="/vendor-signup" element={<VendorSignup />} />
           <Route path="/about" element={<About />} />
           <Route path="/vendor-dashboard" element={<VendorDashboard />} />
+          <Route path="/cyber" element={<CyberHome />} />
+          <Route path="/cyber/auth" element={<CyberAuth />} />
+          <Route path="/cyber/dashboard" element={<CyberDashboard />} />
+          <Route path="/cyber/admin" element={<CyberAdmin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <WhatsAppButton />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
