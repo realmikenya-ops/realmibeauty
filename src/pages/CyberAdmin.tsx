@@ -56,8 +56,8 @@ const CyberAdmin = () => {
     return () => { supabase.removeChannel(ch); };
   }, [role]);
 
-  const updateOrder = async (id: string, patch: Partial<Order>) => {
-    const { error } = await supabase.from("cyber_orders").update(patch).eq("id", id);
+  const updateOrder = async (id: string, patch: { status?: string; payment_status?: string }) => {
+    const { error } = await supabase.from("cyber_orders").update(patch as any).eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Order updated");
     // Send notification to customer
