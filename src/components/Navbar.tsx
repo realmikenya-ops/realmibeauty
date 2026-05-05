@@ -10,7 +10,6 @@ export const Navbar = () => {
   const links = [
     { to: "/", label: "Home" },
     { to: "/explore", label: "Explore" },
-    { to: "/cyber", label: "Cyber & Print" },
     { to: "/vendor-signup", label: "For Vendors" },
     { to: "/vendor-dashboard", label: "Dashboard" },
     { to: "/about", label: "About" },
