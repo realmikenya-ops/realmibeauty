@@ -1,19 +1,21 @@
 import { Link, useLocation } from "react-router-dom";
 import { Logo } from "./Logo";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Navbar = () => {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+  const { user, role, signOut } = useAuth();
   const links = [
     { to: "/", label: "Home" },
     { to: "/explore", label: "Explore" },
-    { to: "/cyber", label: "Cyber & Print" },
     { to: "/vendor-signup", label: "For Vendors" },
     { to: "/vendor-dashboard", label: "Dashboard" },
     { to: "/about", label: "About" },
+    ...(role === "admin" ? [{ to: "/admin", label: "Admin" }] : []),
   ];
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
@@ -31,7 +33,11 @@ export const Navbar = () => {
           ))}
         </nav>
         <div className="hidden items-center gap-3 md:flex">
-          <Button variant="ghost" asChild><Link to="/login">Sign in</Link></Button>
+          {user ? (
+            <Button variant="ghost" onClick={signOut}><LogOut className="mr-2 h-4 w-4" />Sign out</Button>
+          ) : (
+            <Button variant="ghost" asChild><Link to="/login">Sign in</Link></Button>
+          )}
           <Button variant="luxe" asChild><Link to="/explore">Book now</Link></Button>
         </div>
         <button onClick={() => setOpen(!open)} className="md:hidden" aria-label="Menu">
