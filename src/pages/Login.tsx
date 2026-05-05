@@ -1,13 +1,50 @@
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const Login = () => {
   const [tab, setTab] = useState<"login" | "signup">("login");
-  const [role, setRole] = useState<"customer" | "vendor">("customer");
+  const [busy, setBusy] = useState(false);
+  const navigate = useNavigate();
+  const { user, role } = useAuth();
+
+  useEffect(() => {
+    if (user) navigate(role === "admin" ? "/admin" : "/", { replace: true });
+  }, [user, role, navigate]);
+
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const email = String(fd.get("email") || "").trim();
+    const password = String(fd.get("password") || "");
+    const name = String(fd.get("name") || "").trim();
+    const phone = String(fd.get("phone") || "").trim();
+    if (!email || password.length < 6) return toast.error("Enter email and password (min 6 chars)");
+    setBusy(true);
+    if (tab === "login") {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      setBusy(false);
+      if (error) return toast.error(error.message);
+      toast.success("Welcome back!");
+    } else {
+      const { error } = await supabase.auth.signUp({
+        email, password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: { display_name: name || email.split("@")[0], phone },
+        },
+      });
+      setBusy(false);
+      if (error) return toast.error(error.message);
+      toast.success("Account created — check your email to confirm.");
+    }
+  };
+
   return (
     <div className="bg-background min-h-screen">
       <Navbar />
@@ -32,37 +69,17 @@ const Login = () => {
             ))}
           </div>
 
-          {tab === "signup" && (
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              {(["customer", "vendor"] as const).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setRole(r)}
-                  className={`rounded-lg border px-3 py-2 text-xs font-semibold capitalize transition-colors ${
-                    role === r ? "border-accent bg-accent/10 text-accent" : "border-border"
-                  }`}
-                >
-                  I'm a {r}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              toast.info("Connect Lovable Cloud to enable real authentication.");
-            }}
-            className="mt-5 space-y-3"
-          >
+          <form onSubmit={onSubmit} className="mt-5 space-y-3">
             {tab === "signup" && (
-              <input className="border-input w-full rounded-lg border bg-background px-3 py-2.5 text-sm" placeholder="Full name" />
+              <input name="name" className="border-input w-full rounded-lg border bg-background px-3 py-2.5 text-sm" placeholder="Full name" />
             )}
-            <input type="email" className="border-input w-full rounded-lg border bg-background px-3 py-2.5 text-sm" placeholder="Email" />
-            <input className="border-input w-full rounded-lg border bg-background px-3 py-2.5 text-sm" placeholder="Phone (M-Pesa) e.g. 07XX XXX XXX" />
-            <input type="password" className="border-input w-full rounded-lg border bg-background px-3 py-2.5 text-sm" placeholder="Password" />
-            <Button type="submit" variant="luxe" size="lg" className="w-full">
-              {tab === "login" ? "Sign in" : "Create account"}
+            <input name="email" type="email" required className="border-input w-full rounded-lg border bg-background px-3 py-2.5 text-sm" placeholder="Email" />
+            {tab === "signup" && (
+              <input name="phone" className="border-input w-full rounded-lg border bg-background px-3 py-2.5 text-sm" placeholder="Phone (M-Pesa) e.g. 07XX XXX XXX" />
+            )}
+            <input name="password" type="password" required minLength={6} className="border-input w-full rounded-lg border bg-background px-3 py-2.5 text-sm" placeholder="Password" />
+            <Button type="submit" variant="luxe" size="lg" className="w-full" disabled={busy}>
+              {busy ? "Please wait…" : tab === "login" ? "Sign in" : "Create account"}
             </Button>
           </form>
 
