@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 const Login = () => {
-  const [tab, setTab] = useState<"login" | "signup">("login");
+  const [tab, setTab] = useState<"login" | "signup" | "forgot">("login");
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
   const { user, role } = useAuth();
@@ -45,43 +45,78 @@ const Login = () => {
     }
   };
 
+  const onForgot = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const email = String(fd.get("email") || "").trim();
+    if (!email) return toast.error("Enter your email address");
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Password reset link sent — check your inbox.");
+    setTab("login");
+  };
+
+  const title = tab === "login" ? "Welcome back" : tab === "signup" ? "Create account" : "Reset password";
+  const subtitle = tab === "login" ? "Sign in to your Realmi account" : tab === "signup" ? "Join Realmi Kenya in seconds" : "We'll send you a reset link";
+
   return (
     <div className="bg-background min-h-screen">
       <Navbar />
       <section className="container flex min-h-[80vh] items-center justify-center py-16">
         <div className="bg-card w-full max-w-md rounded-2xl border border-border p-8 shadow-luxe">
-          <h1 className="font-display text-3xl font-bold">{tab === "login" ? "Welcome back" : "Create account"}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {tab === "login" ? "Sign in to your Realmi account" : "Join Realmi Kenya in seconds"}
-          </p>
+          <h1 className="font-display text-3xl font-bold">{title}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{subtitle}</p>
 
-          <div className="bg-secondary mt-6 grid grid-cols-2 rounded-xl p-1">
-            {(["login", "signup"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`rounded-lg py-2 text-sm font-semibold capitalize transition-colors ${
-                  tab === t ? "bg-card shadow-card" : "text-muted-foreground"
-                }`}
-              >
-                {t === "login" ? "Sign in" : "Sign up"}
+          {tab !== "forgot" && (
+            <div className="bg-secondary mt-6 grid grid-cols-2 rounded-xl p-1">
+              {(["login", "signup"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={`rounded-lg py-2 text-sm font-semibold capitalize transition-colors ${
+                    tab === t ? "bg-card shadow-card" : "text-muted-foreground"
+                  }`}
+                >
+                  {t === "login" ? "Sign in" : "Sign up"}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {tab === "forgot" ? (
+            <form onSubmit={onForgot} className="mt-5 space-y-3">
+              <input name="email" type="email" required className="border-input w-full rounded-lg border bg-background px-3 py-2.5 text-sm" placeholder="Email" />
+              <Button type="submit" variant="luxe" size="lg" className="w-full" disabled={busy}>
+                {busy ? "Please wait…" : "Send reset link"}
+              </Button>
+              <button type="button" onClick={() => setTab("login")} className="text-muted-foreground hover:text-foreground mx-auto block text-xs underline">
+                Back to sign in
               </button>
-            ))}
-          </div>
-
-          <form onSubmit={onSubmit} className="mt-5 space-y-3">
-            {tab === "signup" && (
-              <input name="name" className="border-input w-full rounded-lg border bg-background px-3 py-2.5 text-sm" placeholder="Full name" />
-            )}
-            <input name="email" type="email" required className="border-input w-full rounded-lg border bg-background px-3 py-2.5 text-sm" placeholder="Email" />
-            {tab === "signup" && (
-              <input name="phone" className="border-input w-full rounded-lg border bg-background px-3 py-2.5 text-sm" placeholder="Phone (M-Pesa) e.g. 07XX XXX XXX" />
-            )}
-            <input name="password" type="password" required minLength={6} className="border-input w-full rounded-lg border bg-background px-3 py-2.5 text-sm" placeholder="Password" />
-            <Button type="submit" variant="luxe" size="lg" className="w-full" disabled={busy}>
-              {busy ? "Please wait…" : tab === "login" ? "Sign in" : "Create account"}
-            </Button>
-          </form>
+            </form>
+          ) : (
+            <form onSubmit={onSubmit} className="mt-5 space-y-3">
+              {tab === "signup" && (
+                <input name="name" className="border-input w-full rounded-lg border bg-background px-3 py-2.5 text-sm" placeholder="Full name" />
+              )}
+              <input name="email" type="email" required className="border-input w-full rounded-lg border bg-background px-3 py-2.5 text-sm" placeholder="Email" />
+              {tab === "signup" && (
+                <input name="phone" className="border-input w-full rounded-lg border bg-background px-3 py-2.5 text-sm" placeholder="Phone (M-Pesa) e.g. 07XX XXX XXX" />
+              )}
+              <input name="password" type="password" required minLength={6} className="border-input w-full rounded-lg border bg-background px-3 py-2.5 text-sm" placeholder="Password" />
+              {tab === "login" && (
+                <button type="button" onClick={() => setTab("forgot")} className="text-muted-foreground hover:text-accent text-xs underline">
+                  Forgot password?
+                </button>
+              )}
+              <Button type="submit" variant="luxe" size="lg" className="w-full" disabled={busy}>
+                {busy ? "Please wait…" : tab === "login" ? "Sign in" : "Create account"}
+              </Button>
+            </form>
+          )}
 
           <p className="text-muted-foreground mt-5 text-center text-xs">
             By continuing, you agree to Realmi's Terms of Service.{" "}
