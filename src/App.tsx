@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound.tsx";
 import Explore from "./pages/Explore.tsx";
 import VendorDetail from "./pages/VendorDetail.tsx";
 import Login from "./pages/Login.tsx";
+import ResetPassword from "./pages/ResetPassword.tsx";
 import VendorSignup from "./pages/VendorSignup.tsx";
 import About from "./pages/About.tsx";
 import VendorDashboard from "./pages/VendorDashboard.tsx";
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/explore" element={<Explore />} />
           <Route path="/vendor/:id" element={<VendorDetail />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/vendor-signup" element={<VendorSignup />} />
           <Route path="/about" element={<About />} />
           <Route path="/vendor-dashboard" element={<VendorDashboard />} />
